@@ -9,7 +9,7 @@ namespace X
 	public class Program
 	{
 		public static long[] StdDenoms { get; } = new [] {
-#if true
+#if false
 			1, 2, 3, 4, 5, 6, 8, 9, 10L
 #else
 			1, 2, 3, 4, 5, 6, 8, 9, 10, 16, 18, 20, 27, 32, 50, 54, 64, 81, 100, 128, 162, 200,
@@ -29,8 +29,8 @@ namespace X
 #endif
 		};
 
-		public static long Dust = 0; // 2048 - 1;
-		public static int MaxRecursionDepth = 6;
+		public static long Dust = 2048 - 1;
+		public static int MaxRecursionDepth = 3;
 
 		public static void Main()
 		{
@@ -39,33 +39,46 @@ namespace X
 			var decompositionsCache = new SortedList<long, Factor>();
 			FillDecompositionsCache(decompositionsCache, stdDenomsInAcceptableRange);
 
-			var target = (long)7; //(1.2345 * 100_000_000);
-			stdDenomsInAcceptableRange = StdDenoms.Where(x => x > Dust && x <= target).ToArray().AsSpan();
-			var decompositionTree = Decompose(target, stdDenomsInAcceptableRange, decompositionsCache, MaxRecursionDepth);
+			var target = (long)(1.2345 * 100_000_000);
+			stdDenomsInAcceptableRange = StdDenoms.Where(x => x > Dust && x <= target).Reverse().ToArray().AsSpan();
+			var decompositionTree = Decompose(target, stdDenomsInAcceptableRange, decompositionsCache);
 
 			var decomposition = (Factor)decompositionTree;
-			foreach(var d in Flatten(decomposition))
+			foreach(var d in Flatten(decomposition, MaxRecursionDepth))
 			{
 				Console.WriteLine("{ " + string.Join(", ", d) + " }" );
 			}
 		}
 
 
-		private static List<List<long>> Flatten(Factor n)
+		private static List<List<long>> Flatten(Factor n, int depth, long parent = long.MaxValue)
 		{
 			var alternativeCount = n.Alternatives.Count;
 			var altResults = new List<List<long>>();
+//			if (depth == 0)
+//			{
+//				altResults.Add(new List<long> { n.Value });
+//				return altResults;
+//			}
+
 			foreach (var alt in n.Alternatives)
 			{
 				var (fst, snd) = (alt.Left.Value, alt.Right.Value);
+				if (fst > parent)
+				{
+					continue;
+				}
 				if (fst >= snd)
 				{
 					altResults.Add(new() {alt.Left.Value, alt.Right.Value});
 				}
 
-				var flattenRight = Flatten(alt.Right);
+				if (depth > 0)
+				{
+				var flattenRight = Flatten(alt.Right, depth - 1, fst);
 				var result = flattenRight.Select(x => x.Prepend(fst).ToList());
 				altResults.AddRange(result);
+				}
 
 			}
 			return altResults;
@@ -77,7 +90,7 @@ namespace X
 			for (var i = 1; i < stdDenomsInAcceptableRange.Length; i++)
 			{
 				var currentDenomination = stdDenomsInAcceptableRange[i];
-				var decomposition = Decompose(currentDenomination, stdDenomsInAcceptableRange, cache, MaxRecursionDepth);
+				var decomposition = Decompose(currentDenomination, stdDenomsInAcceptableRange, cache);
 				cache.Add(currentDenomination, decomposition);
 			}
 		}
@@ -85,8 +98,7 @@ namespace X
 		public static Factor Decompose(
 			long target,
 			Span<long> values,
-			SortedList<long, Factor> cache,
-			int maxDepth)
+			SortedList<long, Factor> cache)
 		{
 			if (cache.TryGetValue(target, out var cachedDecomposition))
 			{
@@ -94,14 +106,15 @@ namespace X
 			}
 
 			var decompositions = new List<Addition>();
+			var last = values.BinarySearch(target);
+			if (last < 0)
+			{
+				last = ~last;
+			}
 
-			for (var i = 0; i < values.Length; i++)
+			for (var i = last-1; i >= 0; i--)
 			{
 				var value = values[i];
-				if (value >= target)
-				{
-					break;
-				}
 
 				if (cache.TryGetValue(value, out var decomposition))
 				{
@@ -111,6 +124,12 @@ namespace X
 						if (cache.TryGetValue(rest, out var restDecomposition))
 						{
 							decompositions.Add(new Addition(restDecomposition, decomposition));
+						}
+						else
+						{
+							var element = Decompose(rest, values, cache);
+							cache.Add(rest, element);
+							decompositions.Add(new Addition(element, decomposition));
 						}
 					}
 				}
