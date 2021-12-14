@@ -5,7 +5,14 @@ public class Program2
 {
 	private static void Main()
 	{
-		var items = new long[] { 0, 1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20}.Reverse().ToArray();
+		var items = new decimal[] { 0,
+			1.12499328m,1.00000000m,0.86093442m,0.67108864m,
+			0.20000000m,0.10000000m,0.09565938m,0.00059049m,
+			0.08188937m,0.04194304m,0.03280645m,0.03188646m,
+			0.00605467m,0.00262144m,0.00061347m,0.00002890m}
+		.Select(x => (long)(x * 100_000_000))
+		.OrderByDescending(x => x)
+		.ToArray();
 
 		var target = 123_450_000L; // 1.2345
 		var tolerance = 10_000L;
@@ -13,10 +20,16 @@ public class Program2
 		var k = 8;
 
 		var compositions = new Compositions(5, items);
+		var decompositions = new List<(decimal TotalSum, List<long> Values)>();
 		foreach (var i in Enumerable.Range(0, (int)compositions.Length-1))
 		{
 			var composition = compositions[i];
-			Console.WriteLine($"{{ {string.Join(", ", composition)} }}");
+			decompositions.Add( (composition.Sum() / 100_000_000m, composition));
+		}
+
+		foreach(var composition in decompositions.OrderByDescending(x => x.TotalSum))
+		{
+			Console.WriteLine($"{composition.TotalSum} = {{ {string.Join(", ", composition.Values)} }}");
 		}
 	}
 }
