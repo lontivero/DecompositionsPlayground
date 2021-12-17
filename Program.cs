@@ -5,10 +5,10 @@ public class Program
 {
 	private static void Main()
 	{
-		//var items = new long[] { 1, 2, 3, 4, 5, 6, 8, 9, 10, 12, 14, 15, 20, 50 }.Reverse().ToArray();
-		var dust = 10_000;
+		var dust = 1000;
+		var k = 8;
 		var target = (long)(1.23456 * 100_000_000);
-		var items = new long[] {
+		var denoms = new long[] {
 			1, 2, 3, 4, 5, 6, 8, 9, 10, 16, 18, 20, 27, 32, 50, 54, 64, 81, 100, 128, 162, 200,
 			243, 256, 486, 500, 512, 729, 1000, 1024, 1458, 2000, 2048, 2187, 4096, 4374, 5000,
 			6561, 8192, 10000, 13122, 16384, 19683, 20000, 32768, 39366, 50000, 59049, 65536,
@@ -23,44 +23,53 @@ public class Program
 			68719476736, 94143178827, 100000000000, 137438953472, 188286357654, 200000000000,
 			274877906944, 282429536481, 500000000000, 549755813888, 564859072962, 847288609443,
 			1000000000000, 1099511627776, 1694577218886, 2000000000000, 2199023255552, 2541865828329
-		}.SkipWhile(x => x < dust).Reverse().ToArray();
+		}.SkipWhile(x => x < dust).TakeWhile(x => x <= target).Reverse().ToArray();
 
-		foreach (var composition in AllComposition(target, 20000, 8, items))
-		{
-			Console.WriteLine($"{composition.Sum()} {{ {string.Join(", ", composition)} }}");
-		}
+		Print (denoms.SelectMany((_, i) =>
+			CompactCombinationsOfIndexesUptoAndPruneWithTolerance(i, target, 10, 0ul, 0, k - 1, denoms)), denoms);
 	}
 
-	private static IEnumerable<IEnumerable<long>> AllComposition(long targetValue, long tolerance, int maxDecompositionLength, ReadOnlyMemory<long> standarDenominations) =>
-		MemoryMarshal.ToEnumerable(standarDenominations).SelectMany((d, i) => Combinations(d, targetValue, tolerance, ImmutableList<long>.Empty, maxDecompositionLength, standarDenominations[i..]));
 
-	private static IEnumerable<ImmutableList<long>> Combinations(
-		long currentDenomination,
-		long targetValue,
+	private static IEnumerable<(long Sum, ulong Decomposition)> CompactCombinationsOfIndexesUptoAndPruneWithTolerance(
+		int currentDenominationIdx,
+		long target,
 		long tolerance,
-		ImmutableList<long> accumulator,
-		int maxDecompositionLength,
-		ReadOnlyMemory<long> standarDenominations)
+		ulong accumulator,
+		long sum,
+		int k,
+		long[] denoms)
 	{
-		if (maxDecompositionLength == 0)
+		accumulator = (accumulator << 8) | ((ulong)currentDenominationIdx & 0xff);
+		var currentDenomination = denoms[currentDenominationIdx];
+		sum += currentDenomination;
+		var remaining = target - currentDenomination;
+		if (k == 0)
+			return new[] { (sum, accumulator) };
+
+		var startingIndex = Array.BinarySearch(denoms, currentDenominationIdx, denoms.Length - currentDenominationIdx, remaining, ReverseComparer.Default);
+		currentDenominationIdx = startingIndex < 0 ? ~startingIndex : startingIndex;
+
+		return Enumerable.Range(0, denoms.Length - currentDenominationIdx)
+			.TakeWhile(i => k * denoms[currentDenominationIdx + i] >= remaining - tolerance)
+			.SelectMany((_, i) => CompactCombinationsOfIndexesUptoAndPruneWithTolerance(currentDenominationIdx + i, remaining, tolerance, accumulator, sum, k - 1, denoms));
+	}
+
+	private static void Print(IEnumerable<(long Sum, ulong Decomposition)> decompositions, long[] denoms)
+	{
+		foreach (var composition in decompositions)
 		{
-			return new[] { accumulator };
+			var indexes = BitConverter.GetBytes(composition.Decomposition);
+			var remaining = composition.Sum;
+			var i = 0;
+			var list = new List<long>();
+			do
+			{
+				var val = denoms[indexes[i++]];
+				list.Insert(0, val);
+				remaining -= val;
+			}while(remaining > 0);
+			Console.WriteLine("Sum: {0} -> [{1}]", composition.Sum, string.Join(", ", list));
 		}
-
-		accumulator = accumulator.Add(currentDenomination);
-		var remain = targetValue - currentDenomination;
-		if (remain == 0)
-		{
-			return new[] { accumulator };
-		}
-
-		var startingIndex = standarDenominations.Span.BinarySearch(remain, ReverseComparer.Default);
-		standarDenominations = standarDenominations[(startingIndex < 0 ? ~startingIndex : startingIndex)..];
-
-		return MemoryMarshal
-			.ToEnumerable(standarDenominations)
-			.Where(std => (maxDecompositionLength - 1) * std > remain - tolerance)
-			.SelectMany((std, i) => Combinations(std, remain, tolerance, accumulator, maxDecompositionLength - 1, standarDenominations[i..]));
 	}
 }
 
