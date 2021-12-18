@@ -80,3 +80,24 @@ Job=.NET 6.0  Runtime=.NET 6.0
 
 The time required to compute the decompositions increases with the size of $k$, what is expected but decreases with the target! This means that the algorithm is more efficient to decompose bigger amount than smaller amount, perhaps this is because with larger numbers there are more denominations to use.
 
+## Success rate
+
+We consider a failure if the decomposer cannot find at least 50 decomposition candidates. The algorithm has 99.998% success rate for with the following parameters:
+
+```
+k = 8
+tolerance = 100 sats
+dust = 500
+target = random between dust and 4_300_000_000;
+```
+
+These where the failures
+```
+target = 3968353356  k = 8  tolerance = 100  dust = 500 results = 44
+target = 4227746714  k = 8  tolerance = 100  dust = 500 results = 40
+Failure rate = 2E-05
+Success rate = 99.998
+Finished after 156460.1184ms that is average time 1.564601184ms.
+```
+
+Note that even in case of failure it still provides at least 40 valid decompositions.
