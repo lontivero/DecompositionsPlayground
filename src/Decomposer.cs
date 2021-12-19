@@ -18,7 +18,7 @@ namespace DecompositionPlayground
 			var currentDenomination = denoms[currentDenominationIdx];
 			sum += currentDenomination;
 			var remaining = target - currentDenomination;
-			if (k == 0)
+			if (k == 0 || remaining < tolerance)
 				return new[] { (sum, accumulator) };
 
 			var startingIndex = Array.BinarySearch(denoms, currentDenominationIdx, denoms.Length - currentDenominationIdx, remaining, ReverseComparer.Default);
