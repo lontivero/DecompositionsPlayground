@@ -222,4 +222,4 @@ UpgradeLog*.htm
 
 # WindowsInstaller generated files
 .ionide/symbolCache.db
-src/BenchmarkDotNet.Artifacts/*
+**/BenchmarkDotNet.Artifacts/*

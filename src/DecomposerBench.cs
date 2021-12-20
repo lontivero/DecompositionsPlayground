@@ -6,17 +6,17 @@ namespace DecompositionPlayground
 	[SimpleJob(RuntimeMoniker.Net60), RankColumn]
 	public class DecomposerBench
 	{
-		[Params(4, 6, 8)]
+		[Params(8)]
 		public int K { get; set; }
 
-		[Params(0.05, 0.5, 50.0)]
-		public Double TargetDouble { get; set; }
+		[Params(1_000_000, 50_000_000, 5_000_000_000)]
+		public long Target { get; set; }
 
-		[Params(0.0, 0.000001, 0.00005)]
-		public Double ToleranceDouble { get; set; }
+		[Params(0, 10, 5000)]
+		public long Tolerance { get; set; }
 
-		[Params(0.000001, 0.00005)]
-		public Double DustDouble { get; set; }
+		[Params(300, 500, 2000)]
+		public long Dust { get; set; }
 
 		public long[]? Denominations { get; set; }
 
@@ -40,12 +40,9 @@ namespace DecompositionPlayground
 				1000000000000, 1099511627776, 1694577218886, 2000000000000, 2199023255552, 2541865828329
 			};
 
-			var target = (long)(TargetDouble * 100_000_000);
-			var dust = (long)(DustDouble * 100_000_000);
-
 			Denominations = denoms
-				.SkipWhile(x => x < dust)
-				.TakeWhile(x => x <= target)
+				.SkipWhile(x => x < Dust)
+				.TakeWhile(x => x <= Target)
 				.Reverse()
 				.ToArray();
 		}
@@ -53,9 +50,7 @@ namespace DecompositionPlayground
 		[Benchmark]
 		public void Process()
 		{
-			var target = (long)(TargetDouble * 100_000_000);
-			var tolerance = (long)(ToleranceDouble * 100_000_000);
-			var count = Decomposer.Combinations(target, tolerance, K, Denominations!).Count();
+			var count = Decomposer.Combinations(Target, Tolerance, K, Denominations!).Count();
 		}
 	}
 }

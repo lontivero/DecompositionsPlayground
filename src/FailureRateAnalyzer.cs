@@ -2,7 +2,7 @@ namespace DecompositionPlayground
 {
 	public class FailureRateAnalyzer
 	{
-		private static readonly Random Random = new ();
+		private static readonly Random Random = new();
 
 		private static readonly long[] StdDenoms = new long[] {
 			1, 2, 3, 4, 5, 6, 8, 9, 10, 16, 18, 20, 27, 32, 50, 54, 64, 81, 100, 128, 162, 200,
@@ -26,16 +26,17 @@ namespace DecompositionPlayground
 			var iterations = 100_000;
 			var failures = 0;
 			var startTime = DateTime.UtcNow;
-			for(var i = 0; i < iterations; i ++)
+			for (var i = 0; i < iterations; i++)
 			{
-				var dust = 500; // Random.NextInt64(1_000);
+				var dust = 512; // Random.NextInt64(1_000);
 				var k = 8; //Random.Next(7, 8);
-				var tolerance = 100; //Random.NextInt64(dust / 20);
+				var tolerance = 50; //Random.NextInt64(dust / 20);
 				var target = Random.NextInt64(dust, 43 * 100_000_000L);
 				var denoms = StdDenoms.SkipWhile(x => x < dust).TakeWhile(x => x <= target).Reverse().ToArray();
 
-				var results = Decomposer.Combinations(target, tolerance, k - 1, denoms).Take(50).ToList();
-				if ( results.Count < 50)
+				var results = Decomposer.Combinations(target, tolerance, k - 1, denoms)/*.Take(30)*/.ToList();
+				var less8 = results.Count(x => ((ulong)x.Sum & (ulong)0xff << 56) == 0);
+				if (results.Count < 1)
 				{
 					failures++;
 					Console.WriteLine($"target = {target}  k = {k}  tolerance = {tolerance}  dust = {dust} results = {results.Count}");
@@ -46,7 +47,7 @@ namespace DecompositionPlayground
 			var failureRate = (double)failures / iterations;
 			Console.WriteLine($"Failure rate = {failureRate}");
 			Console.WriteLine($"Success rate = {1 - failureRate}");
-			Console.WriteLine($"Finished after {totalTime.TotalMilliseconds}ms that is average time {totalTime.TotalMilliseconds / iterations}ms.");
+			Console.WriteLine($"Finished after {totalTime}ms that is average time {totalTime.TotalMilliseconds / iterations}ms.");
 		}
 
 		private static void PrintAll(IEnumerable<(long Sum, ulong Decomposition)> decompositions, long[] denoms)
@@ -73,4 +74,3 @@ namespace DecompositionPlayground
 		}
 	}
 }
-
