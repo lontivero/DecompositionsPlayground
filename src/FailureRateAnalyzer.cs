@@ -35,6 +35,7 @@ namespace DecompositionPlayground
 				var denoms = StdDenoms.SkipWhile(x => x < dust).TakeWhile(x => x <= target).Reverse().ToArray();
 
 				var results = Decomposer.Combinations(target, tolerance, k - 1, denoms)/*.Take(30)*/.ToList();
+				PrintAll(results, denoms);
 				var less8 = results.Count(x => ((ulong)x.Sum & (ulong)0xff << 56) == 0);
 				if (results.Count < 1)
 				{
@@ -50,27 +51,39 @@ namespace DecompositionPlayground
 			Console.WriteLine($"Finished after {totalTime}ms that is average time {totalTime.TotalMilliseconds / iterations}ms.");
 		}
 
-		private static void PrintAll(IEnumerable<(long Sum, ulong Decomposition)> decompositions, long[] denoms)
+		private static char[] ToIndexes((long Sum, int Count, ulong Decomposition) composition, long[] denoms)
+		{
+			var list = new char[composition.Count];
+			for(var i = 0; i < composition.Count; i++)
+			{
+				list[composition.Count - i - 1] = (char)((composition.Decomposition >> (i * 8)) & 0xff);
+			}
+			return list;
+		}
+
+		private static long[] ToRealValuesArray((long Sum, int Count, ulong Decomposition) composition, long[] denoms)
+		{
+			var list = new long[composition.Count];
+			for(var i = 0; i < composition.Count; i++)
+			{
+				var index = (composition.Decomposition >> (i * 8)) & 0xff;
+				list[composition.Count - i - 1] = denoms[index];
+			}
+			return list;
+		}
+
+		private static string ToString((long Sum, int Count, ulong Decomposition) composition, long[] denoms) =>
+			$"Sum: {composition.Sum} -> [{string.Join(", ", ToRealValuesArray(composition, denoms))}]";
+
+		private static void Print((long Sum, int Count, ulong Decomposition) composition, long[] denoms) =>
+			Console.WriteLine(ToString(composition, denoms));
+
+		private static void PrintAll(IEnumerable<(long Sum, int Count, ulong Decomposition)> decompositions, long[] denoms)
 		{
 			foreach (var composition in decompositions)
 			{
 				Print(composition, denoms);
 			}
-		}
-
-		private static void Print((long Sum, ulong Decomposition) composition, long[] denoms)
-		{
-			var indexes = BitConverter.GetBytes(composition.Decomposition);
-			var remaining = composition.Sum;
-			var i = 0;
-			var list = new List<long>();
-			do
-			{
-				var val = denoms[indexes[i++]];
-				list.Insert(0, val);
-				remaining -= val;
-			} while (remaining > 0);
-			Console.WriteLine("Sum: {0} -> [{1}]", composition.Sum, string.Join(", ", list));
 		}
 	}
 }
